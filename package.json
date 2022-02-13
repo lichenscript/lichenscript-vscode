@@ -4,6 +4,10 @@
     "description": "The language support of LichenScript.",
     "version": "0.0.1",
     "icon": "images/lcIcon.png",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/vincentdchan/lichenscript-vscode"
+    },
     "engines": {
         "vscode": "^1.64.0"
     },
