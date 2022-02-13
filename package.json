@@ -1,7 +1,7 @@
 {
     "name": "lichenscript-vscode",
     "displayName": "lichenscript-vscode",
-    "description": "",
+    "description": "The language support of LichenScript.",
     "version": "0.0.1",
     "engines": {
         "vscode": "^1.64.0"

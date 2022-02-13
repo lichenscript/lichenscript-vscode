@@ -10,6 +10,9 @@
 		},
 		{
 			"include": "#comment"
+		},
+		{
+			"include": "#builtin-type"
 		}
 	],
 	"repository": {
@@ -27,6 +30,14 @@
 				"name": "storage.modifier.lichenscript",
 				"match": "\\b(public|internal|private|protected|static|override|virtual|extends|declare)\\b"
 			}]
+		},
+		"builtin-type": {
+			"patterns": [
+				{
+					"name": "entity.name.type.lichenscript",
+					"match": "\\b(i32|i64|f32|f64|boolean|unit|string|char)\\b"
+				}
+			]
 		},
 		"comment": {
 			"patterns": [
