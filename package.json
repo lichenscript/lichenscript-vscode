@@ -4,6 +4,7 @@
     "description": "The language support of LichenScript.",
     "version": "0.0.1",
     "icon": "images/lcIcon.png",
+    "license": "MIT",
     "repository": {
         "type": "git",
         "url": "https://github.com/vincentdchan/lichenscript-vscode"
