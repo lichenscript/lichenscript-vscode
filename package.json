@@ -3,6 +3,7 @@
     "displayName": "lichenscript-vscode",
     "description": "The language support of LichenScript.",
     "version": "0.0.1",
+    "icon": "images/lcIcon.png",
     "engines": {
         "vscode": "^1.64.0"
     },
