@@ -5,6 +5,7 @@
     "version": "0.0.1",
     "icon": "images/lcIcon.png",
     "license": "MIT",
+    "publisher": "VincentChan",
     "repository": {
         "type": "git",
         "url": "https://github.com/vincentdchan/lichenscript-vscode"
