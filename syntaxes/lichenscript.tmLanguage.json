@@ -1,0 +1,41 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "LichenScript",
+	"patterns": [
+		{
+			"include": "#keywords"
+		},
+		{
+			"include": "#strings"
+		}
+	],
+	"repository": {
+		"keywords": {
+			"patterns": [{
+				"name": "keyword.control.lichenscript",
+				"match": "\\b(if|else|while|for|return|match|case|let|const)\\b"
+			}, {
+				"name": "support.function.lichenscript",
+				"match": "\\b(function)\\b"
+			}, {
+				"name": "support.class.lichenscript",
+				"match": "\\b(class|enum)\\b"
+			}, {
+				"name": "storage.modifier.lichenscript",
+				"match": "\\b(public|internal|private|protected|static|override|virtual|extends|declare)\\b"
+			}]
+		},
+		"strings": {
+			"name": "string.quoted.double.lichenscript",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.lichenscript",
+					"match": "\\\\."
+				}
+			]
+		}
+	},
+	"scopeName": "source.lichenscript"
+}

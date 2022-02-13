@@ -1,0 +1,25 @@
+{
+    "name": "lichenscript-vscode",
+    "displayName": "lichenscript-vscode",
+    "description": "",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.64.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [{
+            "id": "lichenscript",
+            "aliases": ["LichenScript", "lichenscript"],
+            "extensions": [".lc"],
+            "configuration": "./language-configuration.json"
+        }],
+        "grammars": [{
+            "language": "lichenscript",
+            "scopeName": "source.lichenscript",
+            "path": "./syntaxes/lichenscript.tmLanguage.json"
+        }]
+    }
+}
