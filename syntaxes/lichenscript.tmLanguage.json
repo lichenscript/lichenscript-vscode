@@ -24,6 +24,9 @@
 				"name": "support.function.lichenscript",
 				"match": "\\b(function)\\b"
 			}, {
+				"name": "storage.modifier.import.lichenscript",
+				"match": "\\b(import)\\b"
+			}, {
 				"name": "support.class.lichenscript",
 				"match": "\\b(class|enum)\\b"
 			}, {
