@@ -9,6 +9,9 @@
 			"include": "#strings"
 		},
 		{
+			"include": "#chars"
+		},
+		{
 			"include": "#comment"
 		},
 		{
@@ -18,6 +21,9 @@
 	"repository": {
 		"keywords": {
 			"patterns": [{
+				"name": "keyword.lichenscript",
+				"match": "\\b(this)\\b"
+			},{
 				"name": "keyword.control.lichenscript",
 				"match": "\\b(if|else|while|for|return|match|case|let|const)\\b"
 			}, {
@@ -113,6 +119,17 @@
 			"name": "string.quoted.double.lichenscript",
 			"begin": "\"",
 			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.lichenscript",
+					"match": "\\\\."
+				}
+			]
+		},
+		"chars": {
+			"name": "constant.character.lichenscript",
+			"begin": "'",
+			"end": "'",
 			"patterns": [
 				{
 					"name": "constant.character.escape.lichenscript",
