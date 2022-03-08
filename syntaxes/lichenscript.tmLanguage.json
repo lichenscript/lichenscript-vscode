@@ -25,7 +25,7 @@
 				"match": "\\b(this|as)\\b"
 			},{
 				"name": "keyword.control.lichenscript",
-				"match": "\\b(if|else|while|for|return|match|case|let|const)\\b"
+				"match": "\\b(if|else|while|for|return|match|case|let|const|break|continue)\\b"
 			}, {
 				"name": "support.function.lichenscript",
 				"match": "\\b(function)\\b"
