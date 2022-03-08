@@ -37,7 +37,7 @@
 				"match": "\\b(class|enum)\\b"
 			}, {
 				"name": "storage.modifier.lichenscript",
-				"match": "\\b(public|internal|private|protected|static|override|virtual|extends|declare)\\b"
+				"match": "\\b(public|internal|private|protected|static|override|virtual|extends|implements|declare)\\b"
 			}]
 		},
 		"builtin-type": {
