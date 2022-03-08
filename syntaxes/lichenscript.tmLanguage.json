@@ -34,7 +34,7 @@
 				"match": "\\b(import|from)\\b"
 			}, {
 				"name": "support.class.lichenscript",
-				"match": "\\b(class|enum)\\b"
+				"match": "\\b(class|enum|interface)\\b"
 			}, {
 				"name": "storage.modifier.lichenscript",
 				"match": "\\b(public|internal|private|protected|static|override|virtual|extends|implements|declare)\\b"
