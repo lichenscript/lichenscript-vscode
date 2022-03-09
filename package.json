@@ -13,13 +13,18 @@
     "engines": {
         "vscode": "^1.64.0"
     },
+    "activationEvents": [
+        "onLanguage:lichenscript"
+    ],
     "categories": [
         "Programming Languages"
     ],
     "scripts": {
         "vscode:prepublish": "npm run compile",
-        "compile": "tsc -b"
+        "compile": "tsc -b",
+        "watch": "tsc -b -w"
     },
+    "main": "./client/out/extension",
     "contributes": {
         "languages": [
             {
