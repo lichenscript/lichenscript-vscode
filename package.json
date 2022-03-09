@@ -16,17 +16,34 @@
     "categories": [
         "Programming Languages"
     ],
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -b"
+    },
     "contributes": {
-        "languages": [{
-            "id": "lichenscript",
-            "aliases": ["LichenScript", "lichenscript"],
-            "extensions": [".lc"],
-            "configuration": "./language-configuration.json"
-        }],
-        "grammars": [{
-            "language": "lichenscript",
-            "scopeName": "source.lichenscript",
-            "path": "./syntaxes/lichenscript.tmLanguage.json"
-        }]
+        "languages": [
+            {
+                "id": "lichenscript",
+                "aliases": [
+                    "LichenScript",
+                    "lichenscript"
+                ],
+                "extensions": [
+                    ".lc"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "lichenscript",
+                "scopeName": "source.lichenscript",
+                "path": "./syntaxes/lichenscript.tmLanguage.json"
+            }
+        ]
+    },
+    "devDependencies": {
+        "@types/node": "^17.0.21",
+        "typescript": "^4.6.2"
     }
 }
