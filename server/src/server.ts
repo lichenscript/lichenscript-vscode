@@ -3,22 +3,23 @@ import {
   ProposedFeatures,
   InitializeParams,
   DidChangeConfigurationNotification,
-  DidChangeTextDocumentParams,
-  DidOpenTextDocumentParams,
-  DidCloseTextDocumentParams,
-  CompletionItem,
-  CompletionItemKind,
-  TextDocumentPositionParams,
+  Diagnostic,
+  DiagnosticSeverity,
   TextDocumentSyncKind,
   InitializeResult,
+  TextDocuments,
+  TextDocumentChangeEvent
 } from 'vscode-languageserver/node';
+import { TextDocument } from 'vscode-languageserver-textdocument';
+import { createIntellisenseInstance } from 'lichenscript-web';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 const connection = createConnection(ProposedFeatures.all);
+const intellisenseInstantce = createIntellisenseInstance();
 
 // Create a simple text document manager.
-// const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
+const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 
 let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
@@ -68,28 +69,52 @@ connection.onInitialized(() => {
     connection.client.register(DidChangeConfigurationNotification.type, undefined);
   }
 
-  connection.onDidCloseTextDocument((params: DidCloseTextDocumentParams) => {
-    console.log("LichenScript closeTextDocument: ", params);
-  });
-
-  connection.onDidChangeTextDocument((params: DidChangeTextDocumentParams) => {
-    let counter = 0;
-    for(const change of params.contentChanges) {
-      console.log(counter++, change);
-    }
-    // validateTextDocument(params.textDocument);
-  });
-
-  connection.onDidOpenTextDocument((params: DidOpenTextDocumentParams) => {
-    console.log("LichenScript openTextDocument: ", params);
-  });
-
   if (hasWorkspaceFolderCapability) {
     connection.workspace.onDidChangeWorkspaceFolders(_event => {
       connection.console.log('Workspace folder change event received.');
     });
   }
 });
+
+documents.onDidOpen((e: TextDocumentChangeEvent<TextDocument>) => {
+  handleDocumentChanged(e);
+});
+
+documents.onDidChangeContent((e: TextDocumentChangeEvent<TextDocument>) => {
+  handleDocumentChanged(e);
+});
+
+function handleDocumentChanged(e: TextDocumentChangeEvent<TextDocument>) {
+  const textDocument = e.document;
+  let filePath = e.document.uri;
+  if (filePath.startsWith('file://')) {
+    filePath = filePath.slice('file://'.length);
+  }
+  const content = textDocument.getText();
+  const diagnostics: Diagnostic[] = [];
+  try {
+    intellisenseInstantce.parseAndCacheWillThrow(filePath, content);
+  } catch (err: any) {
+    let errors = err.errors;
+    if (!Array.isArray(errors)) {
+      return
+    }
+    for (const err of errors) {
+      const diagnostic: Diagnostic = {
+        severity: DiagnosticSeverity.Error,
+        range: {
+          start: { line: err.start[0] - 1, character: err.start[1] },
+          end: { line: err.end[0] - 1, character: err.end[1] }
+        },
+        message: err.content,
+        source: err.source
+      };
+
+      diagnostics.push(diagnostic);
+    }
+  }
+  connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
+}
 
 // async function validateTextDocument(textDocument: TextDocument): Promise<void> {
 //   // In this simple example we get the settings for every validate run.
@@ -136,46 +161,48 @@ connection.onInitialized(() => {
 //   connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
 // }
 
-connection.onDidChangeWatchedFiles(_change => {
-  // Monitored files have change in VSCode
-  connection.console.log('We received an file change event');
-});
+// connection.onDidChangeWatchedFiles(_change => {
+//   // Monitored files have change in VSCode
+//   connection.console.log('We received an file change event');
+// });
 
-// This handler provides the initial list of the completion items.
-connection.onCompletion(
-  (_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
-    // The pass parameter contains the position of the text document in
-    // which code complete got requested. For the example we ignore this
-    // info and always provide the same completion items.
-    return [
-      {
-        label: 'TypeScript',
-        kind: CompletionItemKind.Text,
-        data: 1
-      },
-      {
-        label: 'JavaScript',
-        kind: CompletionItemKind.Text,
-        data: 2
-      }
-    ];
-  }
-);
+// // This handler provides the initial list of the completion items.
+// connection.onCompletion(
+//   (_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
+//     // The pass parameter contains the position of the text document in
+//     // which code complete got requested. For the example we ignore this
+//     // info and always provide the same completion items.
+//     return [
+//       {
+//         label: 'TypeScript',
+//         kind: CompletionItemKind.Text,
+//         data: 1
+//       },
+//       {
+//         label: 'JavaScript',
+//         kind: CompletionItemKind.Text,
+//         data: 2
+//       }
+//     ];
+//   }
+// );
 
-// This handler resolves additional information for the item selected in
-// the completion list.
-connection.onCompletionResolve(
-  (item: CompletionItem): CompletionItem => {
-    if (item.data === 1) {
-      item.detail = 'TypeScript details';
-      item.documentation = 'TypeScript documentation';
-    } else if (item.data === 2) {
-      item.detail = 'JavaScript details';
-      item.documentation = 'JavaScript documentation';
-    }
-    return item;
-  }
-);
+// // This handler resolves additional information for the item selected in
+// // the completion list.
+// connection.onCompletionResolve(
+//   (item: CompletionItem): CompletionItem => {
+//     if (item.data === 1) {
+//       item.detail = 'TypeScript details';
+//       item.documentation = 'TypeScript documentation';
+//     } else if (item.data === 2) {
+//       item.detail = 'JavaScript details';
+//       item.documentation = 'JavaScript documentation';
+//     }
+//     return item;
+//   }
+// );
+
+documents.listen(connection);
 
 // Listen on the connection
 connection.listen();
