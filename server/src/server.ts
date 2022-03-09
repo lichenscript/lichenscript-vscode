@@ -1,16 +1,16 @@
 import {
   createConnection,
-  TextDocuments,
-  Diagnostic,
-  DiagnosticSeverity,
   ProposedFeatures,
   InitializeParams,
   DidChangeConfigurationNotification,
+  DidChangeTextDocumentParams,
+  DidOpenTextDocumentParams,
+  DidCloseTextDocumentParams,
   CompletionItem,
   CompletionItemKind,
   TextDocumentPositionParams,
   TextDocumentSyncKind,
-  InitializeResult
+  InitializeResult,
 } from 'vscode-languageserver/node';
 
 import {
@@ -22,13 +22,14 @@ import {
 const connection = createConnection(ProposedFeatures.all);
 
 // Create a simple text document manager.
-const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
+// const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 
 let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
 let hasDiagnosticRelatedInformationCapability = false;
 
 connection.onInitialize((params: InitializeParams) => {
+  console.log("LichenScript onInitialize");
   const capabilities = params.capabilities;
 
   // Does the client support the `workspace/configuration` request?
@@ -65,10 +66,28 @@ connection.onInitialize((params: InitializeParams) => {
 });
 
 connection.onInitialized(() => {
+  console.log("LichenScript onInitialized");
   if (hasConfigurationCapability) {
     // Register for all configuration changes.
     connection.client.register(DidChangeConfigurationNotification.type, undefined);
   }
+
+  connection.onDidCloseTextDocument((params: DidCloseTextDocumentParams) => {
+    console.log("LichenScript closeTextDocument: ", params);
+  });
+
+  connection.onDidChangeTextDocument((params: DidChangeTextDocumentParams) => {
+    let counter = 0;
+    for(const change of params.contentChanges) {
+      console.log(counter++, change);
+    }
+    // validateTextDocument(params.textDocument);
+  });
+
+  connection.onDidOpenTextDocument((params: DidOpenTextDocumentParams) => {
+    console.log("LichenScript openTextDocument: ", params);
+  });
+
   if (hasWorkspaceFolderCapability) {
     connection.workspace.onDidChangeWorkspaceFolders(_event => {
       connection.console.log('Workspace folder change event received.');
@@ -76,106 +95,50 @@ connection.onInitialized(() => {
   }
 });
 
-// The example settings
-interface ExampleSettings {
-  maxNumberOfProblems: number;
-}
+// async function validateTextDocument(textDocument: TextDocument): Promise<void> {
+//   // In this simple example we get the settings for every validate run.
+//   // const settings = await getDocumentSettings(textDocument.uri);
 
-// The global settings, used when the `workspace/configuration` request is not supported by the client.
-// Please note that this is not the case when using this server with the client provided in this example
-// but could happen with other clients.
-const defaultSettings: ExampleSettings = { maxNumberOfProblems: 1000 };
-let globalSettings: ExampleSettings = defaultSettings;
+//   // The validator creates diagnostics for all uppercase words length 2 and more
+//   const text = textDocument.getText();
+//   const pattern = /\b[A-Z]{2,}\b/g;
+//   let m: RegExpExecArray | null;
 
-// Cache the settings of all open documents
-const documentSettings: Map<string, Thenable<ExampleSettings>> = new Map();
+//   const diagnostics: Diagnostic[] = [];
+//   while ((m = pattern.exec(text))) {
+//     const diagnostic: Diagnostic = {
+//       severity: DiagnosticSeverity.Warning,
+//       range: {
+//         start: textDocument.positionAt(m.index),
+//         end: textDocument.positionAt(m.index + m[0].length)
+//       },
+//       message: `${m[0]} is all uppercase.`,
+//       source: 'ex'
+//     };
+//     if (hasDiagnosticRelatedInformationCapability) {
+//       diagnostic.relatedInformation = [
+//         {
+//           location: {
+//             uri: textDocument.uri,
+//             range: Object.assign({}, diagnostic.range)
+//           },
+//           message: 'Spelling matters'
+//         },
+//         {
+//           location: {
+//             uri: textDocument.uri,
+//             range: Object.assign({}, diagnostic.range)
+//           },
+//           message: 'Particularly for names'
+//         }
+//       ];
+//     }
+//     diagnostics.push(diagnostic);
+//   }
 
-connection.onDidChangeConfiguration(change => {
-  if (hasConfigurationCapability) {
-    // Reset all cached document settings
-    documentSettings.clear();
-  } else {
-    globalSettings = <ExampleSettings>(
-      (change.settings.languageServerExample || defaultSettings)
-    );
-  }
-
-  // Revalidate all open text documents
-  documents.all().forEach(validateTextDocument);
-});
-
-function getDocumentSettings(resource: string): Thenable<ExampleSettings> {
-  if (!hasConfigurationCapability) {
-    return Promise.resolve(globalSettings);
-  }
-  let result = documentSettings.get(resource);
-  if (!result) {
-    result = connection.workspace.getConfiguration({
-      scopeUri: resource,
-      section: 'languageServerExample'
-    });
-    documentSettings.set(resource, result);
-  }
-  return result;
-}
-
-// Only keep settings for open documents
-documents.onDidClose(e => {
-  documentSettings.delete(e.document.uri);
-});
-
-// The content of a text document has changed. This event is emitted
-// when the text document first opened or when its content has changed.
-documents.onDidChangeContent(change => {
-  validateTextDocument(change.document);
-});
-
-async function validateTextDocument(textDocument: TextDocument): Promise<void> {
-  // In this simple example we get the settings for every validate run.
-  const settings = await getDocumentSettings(textDocument.uri);
-
-  // The validator creates diagnostics for all uppercase words length 2 and more
-  const text = textDocument.getText();
-  const pattern = /\b[A-Z]{2,}\b/g;
-  let m: RegExpExecArray | null;
-
-  let problems = 0;
-  const diagnostics: Diagnostic[] = [];
-  while ((m = pattern.exec(text)) && problems < settings.maxNumberOfProblems) {
-    problems++;
-    const diagnostic: Diagnostic = {
-      severity: DiagnosticSeverity.Warning,
-      range: {
-        start: textDocument.positionAt(m.index),
-        end: textDocument.positionAt(m.index + m[0].length)
-      },
-      message: `${m[0]} is all uppercase.`,
-      source: 'ex'
-    };
-    if (hasDiagnosticRelatedInformationCapability) {
-      diagnostic.relatedInformation = [
-        {
-          location: {
-            uri: textDocument.uri,
-            range: Object.assign({}, diagnostic.range)
-          },
-          message: 'Spelling matters'
-        },
-        {
-          location: {
-            uri: textDocument.uri,
-            range: Object.assign({}, diagnostic.range)
-          },
-          message: 'Particularly for names'
-        }
-      ];
-    }
-    diagnostics.push(diagnostic);
-  }
-
-  // Send the computed diagnostics to VSCode.
-  connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
-}
+//   // Send the computed diagnostics to VSCode.
+//   connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
+// }
 
 connection.onDidChangeWatchedFiles(_change => {
   // Monitored files have change in VSCode
@@ -217,10 +180,6 @@ connection.onCompletionResolve(
     return item;
   }
 );
-
-// Make the text document manager listen on the connection
-// for open, change and close text document events
-documents.listen(connection);
 
 // Listen on the connection
 connection.listen();
