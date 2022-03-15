@@ -1,13 +1,26 @@
 
 import * as path from 'path';
-import { ExtensionContext } from 'vscode';
+import { ExtensionContext, window } from 'vscode';
 
 import {
   LanguageClient,
   LanguageClientOptions,
   ServerOptions,
-  TransportKind
+  TransportKind,
+  NotificationType
 } from 'vscode-languageclient/node';
+
+interface ShowErrorMessageParams {
+  content: string,
+}
+
+class ShowErrorMessage extends NotificationType<ShowErrorMessageParams> {
+
+  constructor() {
+    super("editor/showErrorMessage");
+  }
+
+}
 
 let client: LanguageClient;
 
@@ -50,6 +63,12 @@ export function activate(context: ExtensionContext) {
 
   // Start the client. This will also launch the server
   client.start();
+
+  client.onReady().then(() => {
+    client.onNotification(new ShowErrorMessage, (params: ShowErrorMessageParams) => {
+      window.showErrorMessage(params.content);
+    })
+  })
 }
 
 export function deactivate(): Thenable<void> | undefined {

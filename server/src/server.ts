@@ -11,25 +11,75 @@ import {
   TextDocumentChangeEvent,
   TextDocumentPositionParams,
   CompletionItem,
+  NotificationType
   // CompletionItemKind
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { createIntellisenseInstance } from 'lichenscript-web';
+import { createIntellisenseInstance, IntellisenseInstantce } from 'lichenscript-web';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import * as path from 'path';
+import { fsProvider } from './dummyFS';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 const connection = createConnection(ProposedFeatures.all);
-const intellisenseInstantce = createIntellisenseInstance();
 
 // Create a simple text document manager.
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 
 let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
-let hasDiagnosticRelatedInformationCapability = false;
+// let hasDiagnosticRelatedInformationCapability = false;
 
-connection.onInitialize((params: InitializeParams) => {
-  console.log("LichenScript onInitialize");
+interface ShowErrorMessageParams {
+  content: string,
+}
+
+class ShowErrorMessage extends NotificationType<ShowErrorMessageParams> {
+
+  constructor() {
+    super("editor/showErrorMessage");
+  }
+
+}
+
+const asyncExec = promisify(exec);
+
+async function getRuntimeDir() {
+  const { stdout } = await asyncExec('lsc --runtime-path');
+  return stdout.replace('\n', '');
+}
+
+async function getStdDir() {
+  const { stdout } = await asyncExec('lsc --std-path');
+  return stdout.replace('\n', '');
+}
+
+function pathFromUri(uri: string) {
+  if (uri.startsWith('file://')) {
+    return uri.slice('file://'.length);
+  }
+  return uri;
+}
+
+let runtimeDir: string;
+let stdDir: string;
+
+const modulesMap: Map<string, IntellisenseInstantce> = new Map();
+
+connection.onInitialize(async (params: InitializeParams) => {
+  try {
+    runtimeDir = await getRuntimeDir();
+    stdDir = await getStdDir();
+  } catch(e) {
+    console.error(e);
+    connection.sendNotification(new ShowErrorMessage, {
+      content: "Please install lsc first, it's not installed on your OS."
+    });
+    throw e;
+  }
+
   const capabilities = params.capabilities;
 
   // Does the client support the `workspace/configuration` request?
@@ -40,18 +90,19 @@ connection.onInitialize((params: InitializeParams) => {
   hasWorkspaceFolderCapability = !!(
     capabilities.workspace && !!capabilities.workspace.workspaceFolders
   );
-  hasDiagnosticRelatedInformationCapability = !!(
-    capabilities.textDocument &&
-    capabilities.textDocument.publishDiagnostics &&
-    capabilities.textDocument.publishDiagnostics.relatedInformation
-  );
+  // hasDiagnosticRelatedInformationCapability = !!(
+  //   capabilities.textDocument &&
+  //   capabilities.textDocument.publishDiagnostics &&
+  //   capabilities.textDocument.publishDiagnostics.relatedInformation
+  // );
 
   const result: InitializeResult = {
     capabilities: {
       textDocumentSync: TextDocumentSyncKind.Incremental,
       // Tell the client that this server supports code completion.
       completionProvider: {
-        resolveProvider: true
+        resolveProvider: true,
+        triggerCharacters: ['.']
       }
     }
   };
@@ -66,7 +117,7 @@ connection.onInitialize((params: InitializeParams) => {
 });
 
 connection.onInitialized(() => {
-  console.log("LichenScript onInitialized");
+  console.log('server initialized...');
   if (hasConfigurationCapability) {
     // Register for all configuration changes.
     connection.client.register(DidChangeConfigurationNotification.type, undefined);
@@ -79,20 +130,44 @@ connection.onInitialized(() => {
   }
 });
 
+connection.onExit(() => {
+  console.log('connection exiting...');
+});
+
 documents.onDidOpen((e: TextDocumentChangeEvent<TextDocument>) => {
+  const filePath = pathFromUri(e.document.uri);
+  console.log('open file: ', filePath);
   handleDocumentChanged(e);
+});
+
+documents.onDidClose((e: TextDocumentChangeEvent<TextDocument>) => {
+  const filePath = pathFromUri(e.document.uri);
+  console.log('close file: ', filePath);
 });
 
 documents.onDidChangeContent((e: TextDocumentChangeEvent<TextDocument>) => {
   handleDocumentChanged(e);
 });
 
+function initIntellisenseInstantce(dirPath: string): IntellisenseInstantce {
+  let instance = modulesMap.get(dirPath);
+  if (instance) {
+    return instance;
+  }
+  console.log('init module: ', dirPath);
+  instance = createIntellisenseInstance(fsProvider, {
+    findPaths: [stdDir],
+    runtimeDir,
+  });
+  modulesMap.set(dirPath, instance);
+  return instance;
+}
+
 function handleDocumentChanged(e: TextDocumentChangeEvent<TextDocument>) {
   const textDocument = e.document;
-  let filePath = e.document.uri;
-  if (filePath.startsWith('file://')) {
-    filePath = filePath.slice('file://'.length);
-  }
+  const filePath = pathFromUri(e.document.uri);
+  const dirPath = path.dirname(filePath);
+  const intellisenseInstantce = initIntellisenseInstantce(dirPath);
   const content = textDocument.getText();
   const diagnostics: Diagnostic[] = [];
   try {
