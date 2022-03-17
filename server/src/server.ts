@@ -158,7 +158,8 @@ function initIntellisenseInstantce(dirPath: string): IntellisenseInstantce {
   instance = createIntellisenseInstance(fsProvider, {
     findPaths: [stdDir],
     runtimeDir,
-  });
+    precludeDir: stdDir
+  } as any);
   modulesMap.set(dirPath, instance);
   return instance;
 }
@@ -169,28 +170,31 @@ function handleDocumentChanged(e: TextDocumentChangeEvent<TextDocument>) {
   const dirPath = path.dirname(filePath);
   const intellisenseInstantce = initIntellisenseInstantce(dirPath);
   const content = textDocument.getText();
-  const diagnostics: Diagnostic[] = [];
-  try {
-    intellisenseInstantce.parseAndCacheWillThrow(filePath, content);
-  } catch (err: any) {
-    let errors = err.errors;
-    if (!Array.isArray(errors)) {
-      return
-    }
-    for (const err of errors) {
-      const diagnostic: Diagnostic = {
-        severity: DiagnosticSeverity.Error,
-        range: {
-          start: { line: err.start[0] - 1, character: err.start[1] },
-          end: { line: err.end[0] - 1, character: err.end[1] }
-        },
-        message: err.content,
-        source: err.source
-      };
+  const diagnostics = intellisenseInstantce.parseAndCache(filePath, content) as Diagnostic[];
 
-      diagnostics.push(diagnostic);
+  let hasError = false;
+
+  for (const d of diagnostics) {
+    if (d.severity === DiagnosticSeverity.Error) {
+      hasError = true;
+      break;
     }
   }
+
+  if (hasError) {
+    connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
+    return;
+  }
+
+  // only warnings or others
+
+  const typecheckDiagnostics: Diagnostic[] = intellisenseInstantce.typecheckDir(dirPath) as Diagnostic[];
+  // console.log('typecheckDiagnostics: ', typecheckDiagnostics);
+
+  for (const d of typecheckDiagnostics) {
+    diagnostics.push(d);
+  }
+
   connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
 }
 
