@@ -11,15 +11,17 @@ import {
   TextDocumentChangeEvent,
   TextDocumentPositionParams,
   CompletionItem,
+  DefinitionParams,
   NotificationType
   // CompletionItemKind
-} from 'vscode-languageserver/node';
-import { TextDocument } from 'vscode-languageserver-textdocument';
-import { createIntellisenseInstance, IntellisenseInstantce } from 'lichenscript-web';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import * as path from 'path';
-import { fsProvider } from './dummyFS';
+} from "vscode-languageserver/node";
+import { TextDocument } from "vscode-languageserver-textdocument";
+import { createIntellisenseInstance, IntellisenseInstantce } from "lichenscript-web";
+import { exec } from "child_process";
+import { promisify } from "util";
+import * as path from "path";
+import { fsProvider } from "./dummyFS";
+import { getSearchPathFromNode } from "./utils";
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -103,7 +105,8 @@ connection.onInitialize(async (params: InitializeParams) => {
       completionProvider: {
         resolveProvider: true,
         triggerCharacters: ['.']
-      }
+      },
+      definitionProvider: true,
     }
   };
   if (hasWorkspaceFolderCapability) {
@@ -127,6 +130,27 @@ connection.onInitialized(() => {
     connection.workspace.onDidChangeWorkspaceFolders(_event => {
       connection.console.log('Workspace folder change event received.');
     });
+  }
+});
+
+connection.onDefinition((params: DefinitionParams) => {
+  try {
+    const filePath = pathFromUri(params.textDocument.uri);
+    const document = documents.get(params.textDocument.uri);
+    if (typeof document === 'undefined') {
+      return undefined;
+    }
+    const dirPath = path.dirname(filePath);
+    const intellisenseInstantce = modulesMap.get(dirPath);
+    if (!intellisenseInstantce) {
+      return undefined;
+    }
+    const offset = document.offsetAt(params.position);
+    const tmp = intellisenseInstantce.findDefinition(filePath, offset);
+    return tmp;
+  } catch (err) {
+    console.error(err);
+    return undefined;
   }
 });
 
@@ -155,8 +179,9 @@ function initIntellisenseInstantce(dirPath: string): IntellisenseInstantce {
     return instance;
   }
   console.log('init module: ', dirPath);
+  const findPaths = getSearchPathFromNode(dirPath);
   instance = createIntellisenseInstance(fsProvider, {
-    findPaths: [stdDir],
+    findPaths: [stdDir, ...findPaths],
     runtimeDir,
     precludeDir: stdDir
   } as any);
