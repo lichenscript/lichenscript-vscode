@@ -5,9 +5,17 @@ All notable changes to the "lichenscript-vscode" extension will be documented in
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
 
+## 0.2.1
+
+- Implements `Go to the definition`
+
+## 0.2.0
+
+- Symbol resolutions
+
 ## 0.1.1
 
-- add `*.ts` and `tsconfig.json` to `.vscodeignore`
+- Add `*.ts` and `tsconfig.json` to `.vscodeignore`
 
 ## 0.1.0
 
