@@ -70,18 +70,7 @@ let stdDir: string;
 
 const modulesMap: Map<string, IntellisenseInstantce> = new Map();
 
-connection.onInitialize(async (params: InitializeParams) => {
-  try {
-    runtimeDir = await getRuntimeDir();
-    stdDir = await getStdDir();
-  } catch(e) {
-    console.error(e);
-    connection.sendNotification(new ShowErrorMessage, {
-      content: "Please install lsc first, it's not installed on your OS."
-    });
-    throw e;
-  }
-
+connection.onInitialize((params: InitializeParams) => {
   const capabilities = params.capabilities;
 
   // Does the client support the `workspace/configuration` request?
@@ -119,7 +108,7 @@ connection.onInitialize(async (params: InitializeParams) => {
   return result;
 });
 
-connection.onInitialized(() => {
+connection.onInitialized(async () => {
   console.log('server initialized...');
   if (hasConfigurationCapability) {
     // Register for all configuration changes.
@@ -130,6 +119,17 @@ connection.onInitialized(() => {
     connection.workspace.onDidChangeWorkspaceFolders(_event => {
       connection.console.log('Workspace folder change event received.');
     });
+  }
+
+  try {
+    runtimeDir = await getRuntimeDir();
+    stdDir = await getStdDir();
+  } catch(e) {
+    console.error(e);
+    connection.sendNotification(new ShowErrorMessage, {
+      content: "Please install LichenScript, it's not installed on your OS."
+    });
+    throw e;
   }
 });
 
