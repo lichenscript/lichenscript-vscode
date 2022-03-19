@@ -16,6 +16,12 @@
 		},
 		{
 			"include": "#builtin-type"
+		},
+		{
+			"include": "#variable"
+		},
+		{
+			"include": "#numeric"
 		}
 	],
 	"repository": {
@@ -44,7 +50,7 @@
 			"patterns": [
 				{
 					"name": "entity.name.type.lichenscript",
-					"match": "\\b(i32|i64|f32|f64|boolean|unit|string|char)\\b"
+					"match": "\\b(i32|i64|f32|f64|boolean|unit|string|char|any)\\b"
 				}
 			]
 		},
@@ -134,6 +140,30 @@
 				{
 					"name": "constant.character.escape.lichenscript",
 					"match": "\\\\."
+				}
+			]
+		},
+		"variable": {
+			"patterns": [
+				{
+					"name": "variable.name.lichenscript",
+					"match": "[a-zA-Z_$][a-zA-Z0-9_$]*"
+				}
+			]
+		},
+		"numeric": {
+			"patterns": [
+				{
+					"name": "constant.numeric.lichenscript",
+					"match": "(\\+|-)?0x[ABCDEF1234567890]+L?\\b"
+				},
+				{
+					"name": "constant.numeric.lichenscript",
+					"match": "(\\+|-)?0[12345670]+L?\\b"
+				},
+				{
+					"name": "constant.numeric.lichenscript\\b",
+					"match": "(\\+|\\-)?\\d+L?\\b"
 				}
 			]
 		}
