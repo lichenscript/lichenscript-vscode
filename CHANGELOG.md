@@ -4,6 +4,10 @@ All notable changes to the "lichenscript-vscode" extension will be documented in
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## 0.3.1
+
+- fix syntax issue of numeric
+
 ## 0.3.0
 
 - Support `i64/f64` syntaxes
