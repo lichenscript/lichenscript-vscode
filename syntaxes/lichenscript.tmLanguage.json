@@ -163,7 +163,11 @@
 				},
 				{
 					"name": "constant.numeric.lichenscript\\b",
-					"match": "(\\+|\\-)?\\d+L?\\b"
+					"match": "(\\+|\\-)?\\.\\d+(L|f)?\\b"
+				},
+				{
+					"name": "constant.numeric.lichenscript\\b",
+					"match": "(\\+|\\-)?\\d(\\d|\\.)+(L|f)?\\b"
 				}
 			]
 		}
