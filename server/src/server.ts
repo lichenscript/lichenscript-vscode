@@ -70,7 +70,14 @@ let stdDir: string;
 
 const modulesMap: Map<string, IntellisenseInstantce> = new Map();
 
-connection.onInitialize((params: InitializeParams) => {
+connection.onInitialize( async (params: InitializeParams) => {
+  try {
+    runtimeDir = await getRuntimeDir();
+    stdDir = await getStdDir();
+  } catch(e) {
+    console.error(e);
+  }
+
   const capabilities = params.capabilities;
 
   // Does the client support the `workspace/configuration` request?
@@ -121,15 +128,10 @@ connection.onInitialized(async () => {
     });
   }
 
-  try {
-    runtimeDir = await getRuntimeDir();
-    stdDir = await getStdDir();
-  } catch(e) {
-    console.error(e);
+  if (!runtimeDir || !stdDir) {
     connection.sendNotification(new ShowErrorMessage, {
       content: "Please install LichenScript, it's not installed on your OS."
     });
-    throw e;
   }
 });
 
@@ -173,10 +175,14 @@ documents.onDidChangeContent((e: TextDocumentChangeEvent<TextDocument>) => {
   handleDocumentChanged(e);
 });
 
-function initIntellisenseInstantce(dirPath: string): IntellisenseInstantce {
+function initIntellisenseInstantce(dirPath: string): IntellisenseInstantce | undefined {
   let instance = modulesMap.get(dirPath);
   if (instance) {
     return instance;
+  }
+  if (!runtimeDir || !stdDir) {
+    console.log("runtimeDir or stdDir are undefined");
+    return undefined;
   }
   console.log('init module: ', dirPath);
   const findPaths = getSearchPathFromNode(dirPath);
@@ -194,6 +200,9 @@ function handleDocumentChanged(e: TextDocumentChangeEvent<TextDocument>) {
   const filePath = pathFromUri(e.document.uri);
   const dirPath = path.dirname(filePath);
   const intellisenseInstantce = initIntellisenseInstantce(dirPath);
+  if (!intellisenseInstantce) {
+    return;
+  }
   const content = textDocument.getText();
   const diagnostics = intellisenseInstantce.parseAndCache(filePath, content) as Diagnostic[];
 
