@@ -58,11 +58,11 @@ async function getStdDir() {
   return stdout.replace('\n', '');
 }
 
-function pathFromUri(uri: string) {
+function pathFromUri(uri: string): string | undefined {
   if (uri.startsWith('file://')) {
     return uri.slice('file://'.length);
   }
-  return uri;
+  return undefined;
 }
 
 let runtimeDir: string;
@@ -138,6 +138,9 @@ connection.onInitialized(async () => {
 connection.onDefinition((params: DefinitionParams) => {
   try {
     const filePath = pathFromUri(params.textDocument.uri);
+    if (typeof filePath === 'undefined') {
+      return undefined;
+    }
     const document = documents.get(params.textDocument.uri);
     if (typeof document === 'undefined') {
       return undefined;
@@ -198,6 +201,9 @@ function initIntellisenseInstantce(dirPath: string): IntellisenseInstantce | und
 function handleDocumentChanged(e: TextDocumentChangeEvent<TextDocument>) {
   const textDocument = e.document;
   const filePath = pathFromUri(e.document.uri);
+  if (typeof filePath === 'undefined') {
+    return undefined;
+  }
   const dirPath = path.dirname(filePath);
   const intellisenseInstantce = initIntellisenseInstantce(dirPath);
   if (!intellisenseInstantce) {
