@@ -99,8 +99,8 @@ connection.onInitialize( async (params: InitializeParams) => {
       textDocumentSync: TextDocumentSyncKind.Incremental,
       // Tell the client that this server supports code completion.
       completionProvider: {
-        resolveProvider: true,
-        triggerCharacters: ['.']
+        resolveProvider: false,
+        triggerCharacters: ['.'],
       },
       definitionProvider: true,
     }
@@ -290,39 +290,45 @@ function handleDocumentChanged(e: TextDocumentChangeEvent<TextDocument>) {
 
 // This handler provides the initial list of the completion items.
 connection.onCompletion(
-  (_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
-    // The pass parameter contains the position of the text document in
-    // which code complete got requested. For the example we ignore this
-    // info and always provide the same completion items.
-    return [
-      // {
-      //   label: 'TypeScript',
-      //   kind: CompletionItemKind.Text,
-      //   data: 1
-      // },
-      // {
-      //   label: 'JavaScript',
-      //   kind: CompletionItemKind.Text,
-      //   data: 2
-      // }
-    ];
+  (params: TextDocumentPositionParams): CompletionItem[] | undefined => {
+    try {
+      const filePath = pathFromUri(params.textDocument.uri);
+      if (typeof filePath === 'undefined') {
+        return undefined;
+      }
+      const document = documents.get(params.textDocument.uri);
+      if (typeof document === 'undefined') {
+        return undefined;
+      }
+      const dirPath = path.dirname(filePath);
+      const intellisenseInstantce = modulesMap.get(dirPath);
+      if (!intellisenseInstantce) {
+        return undefined;
+      }
+      const offset = document.offsetAt(params.position);
+      const tmp = intellisenseInstantce.findCompletion(filePath, offset);
+      return tmp;
+    } catch (err) {
+      console.error(err);
+      return undefined;
+    }
   }
 );
 
-// This handler resolves additional information for the item selected in
-// the completion list.
-connection.onCompletionResolve(
-  (item: CompletionItem): CompletionItem => {
-    if (item.data === 1) {
-      item.detail = 'TypeScript details';
-      item.documentation = 'TypeScript documentation';
-    } else if (item.data === 2) {
-      item.detail = 'JavaScript details';
-      item.documentation = 'JavaScript documentation';
-    }
-    return item;
-  }
-);
+// // This handler resolves additional information for the item selected in
+// // the completion list.
+// connection.onCompletionResolve(
+//   (item: CompletionItem): CompletionItem => {
+//     // if (item.data === 1) {
+//     //   item.detail = 'TypeScript details';
+//     //   item.documentation = 'TypeScript documentation';
+//     // } else if (item.data === 2) {
+//     //   item.detail = 'JavaScript details';
+//     //   item.documentation = 'JavaScript documentation';
+//     // }
+//     return item;
+//   }
+// );
 
 documents.listen(connection);
 
