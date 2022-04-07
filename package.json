@@ -20,9 +20,12 @@
         "Programming Languages"
     ],
     "scripts": {
-        "vscode:prepublish": "npm run compile",
-        "compile": "tsc -b",
-        "watch": "tsc -b -w"
+        "clean": "rimraf ./client/out ./server/out",
+        "vscode:prepublish": "npm run clean && npm run esbuild:client -- --minify && npm run esbuild:server -- --minify",
+        "esbuild:client": "esbuild ./client/src/extension.ts --bundle --target=es2020 --outfile=client/out/extension.js --external:vscode --format=cjs --platform=node",
+        "esbuild:server": "esbuild ./server/src/server.ts --bundle --target=es2020 --outfile=server/out/server.js --format=cjs --platform=node",
+        "esbuild-watch:client": "npm run esbuild:client -- --sourcemap --watch",
+        "esbuild-watch:server": "npm run esbuild:server -- --sourcemap --watch"
     },
     "main": "./client/out/extension",
     "contributes": {
@@ -49,6 +52,8 @@
     },
     "devDependencies": {
         "@types/node": "^17.0.21",
+        "esbuild": "^0.14.28",
+        "rimraf": "^3.0.2",
         "typescript": "^4.6.2"
     }
 }
