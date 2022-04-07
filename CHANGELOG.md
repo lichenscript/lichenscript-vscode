@@ -4,6 +4,10 @@ All notable changes to the "lichenscript-vscode" extension will be documented in
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+# 0.4.1
+
+- auto complete keywords
+
 # 0.4.0
 
 - for...in syntax
