@@ -4,6 +4,10 @@ All notable changes to the "lichenscript-vscode" extension will be documented in
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+# 0.4.0
+
+- for...in syntax
+
 # 0.3.5
 
 - bump version of LichenScript to `0.5.6`
