@@ -2,7 +2,7 @@
     "name": "lichenscript-vscode",
     "displayName": "Lichenscript VSCode",
     "description": "The language support of LichenScript.",
-    "version": "0.4.1",
+    "version": "0.4.2",
     "icon": "images/lcIcon.png",
     "license": "MIT",
     "publisher": "VincentChan",

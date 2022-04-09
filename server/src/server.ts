@@ -9,7 +9,7 @@ import {
   InitializeResult,
   TextDocuments,
   TextDocumentChangeEvent,
-  TextDocumentPositionParams,
+  CompletionParams,
   CompletionItem,
   DefinitionParams,
   NotificationType
@@ -22,6 +22,7 @@ import { promisify } from "util";
 import * as path from "path";
 import { fsProvider } from "./dummyFS";
 import { getSearchPathFromNode } from "./utils";
+import { debounce } from 'lodash';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -68,7 +69,12 @@ function pathFromUri(uri: string): string | undefined {
 let runtimeDir: string;
 let stdDir: string;
 
-const modulesMap: Map<string, IntellisenseInstantce> = new Map();
+interface IntellisenseWrapper {
+  instance: IntellisenseInstantce;
+  hasError: boolean;
+}
+
+const modulesMap: Map<string, IntellisenseWrapper> = new Map();
 
 connection.onInitialize( async (params: InitializeParams) => {
   try {
@@ -146,12 +152,12 @@ connection.onDefinition((params: DefinitionParams) => {
       return undefined;
     }
     const dirPath = path.dirname(filePath);
-    const intellisenseInstantce = modulesMap.get(dirPath);
-    if (!intellisenseInstantce) {
+    const intellisenseWrapper = modulesMap.get(dirPath);
+    if (!intellisenseWrapper) {
       return undefined;
     }
     const offset = document.offsetAt(params.position);
-    const tmp = intellisenseInstantce.findDefinition(filePath, offset);
+    const tmp = intellisenseWrapper.instance.findDefinition(filePath, offset);
     return tmp;
   } catch (err) {
     console.error(err);
@@ -174,14 +180,14 @@ documents.onDidClose((e: TextDocumentChangeEvent<TextDocument>) => {
   console.log('close file: ', filePath);
 });
 
-documents.onDidChangeContent((e: TextDocumentChangeEvent<TextDocument>) => {
+documents.onDidChangeContent(debounce((e: TextDocumentChangeEvent<TextDocument>) => {
   handleDocumentChanged(e);
-});
+}, 300));
 
-function initIntellisenseInstantce(dirPath: string): IntellisenseInstantce | undefined {
-  let instance = modulesMap.get(dirPath);
-  if (instance) {
-    return instance;
+function initIntellisenseInstantce(dirPath: string): IntellisenseWrapper | undefined {
+  let wrapper = modulesMap.get(dirPath);
+  if (wrapper) {
+    return wrapper;
   }
   if (!runtimeDir || !stdDir) {
     console.log("runtimeDir or stdDir are undefined");
@@ -189,13 +195,14 @@ function initIntellisenseInstantce(dirPath: string): IntellisenseInstantce | und
   }
   console.log('init module: ', dirPath);
   const findPaths = getSearchPathFromNode(dirPath);
-  instance = createIntellisenseInstance(fsProvider, {
+  const instance = createIntellisenseInstance(fsProvider, {
     findPaths: [stdDir, ...findPaths],
     runtimeDir,
     precludeDir: stdDir
   } as any);
-  modulesMap.set(dirPath, instance);
-  return instance;
+  wrapper = { instance, hasError: false };
+  modulesMap.set(dirPath, wrapper);
+  return wrapper;
 }
 
 function handleDocumentChanged(e: TextDocumentChangeEvent<TextDocument>) {
@@ -205,12 +212,12 @@ function handleDocumentChanged(e: TextDocumentChangeEvent<TextDocument>) {
     return undefined;
   }
   const dirPath = path.dirname(filePath);
-  const intellisenseInstantce = initIntellisenseInstantce(dirPath);
-  if (!intellisenseInstantce) {
+  const intellisenseWrapper = initIntellisenseInstantce(dirPath);
+  if (!intellisenseWrapper) {
     return;
   }
   const content = textDocument.getText();
-  const diagnostics = intellisenseInstantce.parseAndCache(filePath, content) as Diagnostic[];
+  const diagnostics = intellisenseWrapper.instance.parseAndCache(filePath, content) as Diagnostic[];
 
   let hasError = false;
 
@@ -223,65 +230,28 @@ function handleDocumentChanged(e: TextDocumentChangeEvent<TextDocument>) {
 
   if (hasError) {
     connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
+    intellisenseWrapper.hasError = true;
     return;
   }
 
   // only warnings or others
 
-  const typecheckDiagnostics: Diagnostic[] = intellisenseInstantce.typecheckDir(dirPath) as Diagnostic[];
-  // console.log('typecheckDiagnostics: ', typecheckDiagnostics);
+  const typecheckDiagnostics: Diagnostic[] = intellisenseWrapper.instance.typecheckDir(dirPath) as Diagnostic[];
+  console.log('typecheckDiagnostics: ', typecheckDiagnostics);
 
+  let typecheckHasError = false;
   for (const d of typecheckDiagnostics) {
+    if (d.severity == DiagnosticSeverity.Error) {
+      typecheckHasError = true;
+      intellisenseWrapper.hasError = true;
+    }
     diagnostics.push(d);
   }
 
+  intellisenseWrapper.hasError = typecheckHasError;
+
   connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
 }
-
-// async function validateTextDocument(textDocument: TextDocument): Promise<void> {
-//   // In this simple example we get the settings for every validate run.
-//   // const settings = await getDocumentSettings(textDocument.uri);
-
-//   // The validator creates diagnostics for all uppercase words length 2 and more
-//   const text = textDocument.getText();
-//   const pattern = /\b[A-Z]{2,}\b/g;
-//   let m: RegExpExecArray | null;
-
-//   const diagnostics: Diagnostic[] = [];
-//   while ((m = pattern.exec(text))) {
-//     const diagnostic: Diagnostic = {
-//       severity: DiagnosticSeverity.Warning,
-//       range: {
-//         start: textDocument.positionAt(m.index),
-//         end: textDocument.positionAt(m.index + m[0].length)
-//       },
-//       message: `${m[0]} is all uppercase.`,
-//       source: 'ex'
-//     };
-//     if (hasDiagnosticRelatedInformationCapability) {
-//       diagnostic.relatedInformation = [
-//         {
-//           location: {
-//             uri: textDocument.uri,
-//             range: Object.assign({}, diagnostic.range)
-//           },
-//           message: 'Spelling matters'
-//         },
-//         {
-//           location: {
-//             uri: textDocument.uri,
-//             range: Object.assign({}, diagnostic.range)
-//           },
-//           message: 'Particularly for names'
-//         }
-//       ];
-//     }
-//     diagnostics.push(diagnostic);
-//   }
-
-//   // Send the computed diagnostics to VSCode.
-//   connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
-// }
 
 // connection.onDidChangeWatchedFiles(_change => {
 //   // Monitored files have change in VSCode
@@ -290,7 +260,7 @@ function handleDocumentChanged(e: TextDocumentChangeEvent<TextDocument>) {
 
 // This handler provides the initial list of the completion items.
 connection.onCompletion(
-  (params: TextDocumentPositionParams): CompletionItem[] | undefined => {
+  (params: CompletionParams): CompletionItem[] | undefined => {
     try {
       const filePath = pathFromUri(params.textDocument.uri);
       if (typeof filePath === 'undefined') {
@@ -301,12 +271,15 @@ connection.onCompletion(
         return undefined;
       }
       const dirPath = path.dirname(filePath);
-      const intellisenseInstantce = modulesMap.get(dirPath);
-      if (!intellisenseInstantce) {
+      const intellisenseWrapper = modulesMap.get(dirPath);
+      if (!intellisenseWrapper) {
+        return undefined;
+      }
+      if (intellisenseWrapper.hasError) {
         return undefined;
       }
       const offset = document.offsetAt(params.position);
-      const tmp = intellisenseInstantce.findCompletion(filePath, offset);
+      const tmp = intellisenseWrapper.instance.findCompletion(filePath, offset);
       return tmp;
     } catch (err) {
       console.error(err);
