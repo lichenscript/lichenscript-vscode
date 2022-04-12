@@ -22,7 +22,6 @@ import { promisify } from "util";
 import * as path from "path";
 import { fsProvider } from "./dummyFS";
 import { getSearchPathFromNode } from "./utils";
-import { debounce } from 'lodash';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -180,9 +179,20 @@ documents.onDidClose((e: TextDocumentChangeEvent<TextDocument>) => {
   console.log('close file: ', filePath);
 });
 
-documents.onDidChangeContent(debounce((e: TextDocumentChangeEvent<TextDocument>) => {
-  handleDocumentChanged(e);
-}, 300));
+let debounceTicket: NodeJS.Timeout | undefined = undefined;
+let debouncedEvent: TextDocumentChangeEvent<TextDocument> | undefined = undefined
+
+documents.onDidChangeContent((e: TextDocumentChangeEvent<TextDocument>) => {
+  if (debounceTicket) {
+    clearTimeout(debounceTicket);
+  }
+  debouncedEvent = e;
+  debounceTicket = setTimeout(() => {
+    handleDocumentChanged(e);
+    debounceTicket = undefined;
+    debouncedEvent = undefined;
+  }, 300);
+});
 
 function initIntellisenseInstantce(dirPath: string): IntellisenseWrapper | undefined {
   let wrapper = modulesMap.get(dirPath);
@@ -241,7 +251,7 @@ function handleDocumentChanged(e: TextDocumentChangeEvent<TextDocument>) {
 
   let typecheckHasError = false;
   for (const d of typecheckDiagnostics) {
-    if (d.severity == DiagnosticSeverity.Error) {
+    if (d.severity === DiagnosticSeverity.Error) {
       typecheckHasError = true;
       intellisenseWrapper.hasError = true;
     }
@@ -261,25 +271,37 @@ function handleDocumentChanged(e: TextDocumentChangeEvent<TextDocument>) {
 // This handler provides the initial list of the completion items.
 connection.onCompletion(
   (params: CompletionParams): CompletionItem[] | undefined => {
+    if (debounceTicket) {
+      clearTimeout(debounceTicket);
+      handleDocumentChanged(debouncedEvent!);
+      debounceTicket = undefined;
+      debouncedEvent = undefined;
+    }
+
     try {
       const filePath = pathFromUri(params.textDocument.uri);
       if (typeof filePath === 'undefined') {
+        console.log("1");
         return undefined;
       }
       const document = documents.get(params.textDocument.uri);
       if (typeof document === 'undefined') {
+        console.log("2");
         return undefined;
       }
       const dirPath = path.dirname(filePath);
       const intellisenseWrapper = modulesMap.get(dirPath);
       if (!intellisenseWrapper) {
+        console.log("3");
         return undefined;
       }
-      if (intellisenseWrapper.hasError) {
-        return undefined;
-      }
+      // if (intellisenseWrapper.hasError) {
+      //   console.log("4");
+      //   return undefined;
+      // }
       const offset = document.offsetAt(params.position);
       const tmp = intellisenseWrapper.instance.findCompletion(filePath, offset);
+      console.log("ret: ", tmp);
       return tmp;
     } catch (err) {
       console.error(err);
